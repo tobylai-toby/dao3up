@@ -1,0 +1,39 @@
+{
+  "name": "dao3up",
+  "main": "dist/api.js",
+  "description": "适用于ArenaPro的构建/上传工具CLI",
+  "version": "0.0.11",
+  "type": "module",
+  "author": "Tobylai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tobylai-toby/dao3up.git"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "commander": "^13.1.0",
+    "consola": "^3.4.2",
+    "prompts": "^2.4.2"
+  },
+  "peerDependencies": {},
+  "dependencies": {
+    "@inquirer/prompts": "^7.6.0",
+    "@types/configstore": "^6.0.2",
+    "@types/prompts": "^2.4.9",
+    "configstore": "^7.0.0",
+    "typescript": "^5.8.3"
+  },
+  "bin": {
+    "dao3up": "dist/index.js"
+  },
+  "scripts": {
+    "build-api": "bun build --target=node --outfile=dist/api.js --bundle --minify api.ts && tsc --emitDeclarationOnly -d api.ts --outDir dist",
+    "build-cli": "bun build --target=node --outfile=dist/index.js --bundle --minify index.ts",
+    "build": "bun run build-api && bun run build-cli",
+    "prepublishOnly": "bun run build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

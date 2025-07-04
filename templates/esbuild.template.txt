@@ -1,0 +1,96 @@
+#[file-start]esbuild.mjs
+import * as esbuild from "esbuild";
+import * as path from "node:path";
+import * as api from "dao3up"
+const build_type = process.argv[process.argv.length - 1] === "build"
+    ? "build"
+    : "watch";
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const buildConf=api.getBuildConfig();
+function generateBuildCfg(side) {
+    return {
+        entryPoints: [buildConf[side].entry],
+        outfile: buildConf[side].outfile,
+        bundle: true,
+        tsconfig: buildConf[side].tsconfigPath,
+        minify: buildConf[side].development ? false : true,
+    };
+}
+
+// Esbuild plugins
+const plugins=[];
+
+async function buildSide(side) {
+    console.log(`building ${side}...`);
+    const cfg = generateBuildCfg(side);
+    const time = new Date().getTime();
+    const res = await esbuild.build({ ...cfg, logLevel: "warning",plugins });
+    if (res.errors.length) {
+        throw new Error("Build failed");
+    }
+    console.log(`built ${side} in ${new Date().getTime() - time}ms`);
+    let data = {
+        side,
+        outfile: cfg.outfile,
+        outname: path.basename(cfg.outfile),
+    };
+    lock = true;
+    await sleep(10);
+    lock = false;
+    api.upload(side);
+}
+async function watchSide(side) {
+    console.log(`watching ${side}...`);
+    const cfg = generateBuildCfg(side);
+    let lastbuildTime = new Date().getTime();
+    const ctx = await esbuild.context({
+        ...cfg,
+        logLevel: "warning",
+        plugins: [{
+            name: "notify",
+            setup(build) {
+                build.onStart(async () => {
+                    lastbuildTime = Date.now();
+                    console.log("building " + side);
+                });
+
+                build.onEnd(async (result) => {
+                    if (result.errors.length) {
+                        console.log(`build ${side} failed`);
+                    } else {
+                        console.log(
+                            `built ${side} in ${
+                                new Date().getTime() - lastbuildTime
+                            }ms`,
+                        );
+                        api.upload(side);
+                    }
+                });
+            },
+        },...plugins],
+    });
+    await ctx.watch();
+}
+console.log("build type: " + build_type);
+if (build_type == "build") {
+    Promise.all(
+        [buildSide("server"), buildSide("client")],
+    );
+} else {
+    Promise.all(
+        [watchSide("server"), watchSide("client")],
+    );
+}
+
+#[file-end]
+#[file-start]dao3up.json
+{
+    "build":{
+        "setup_commands":["npm i -D esbuild dao3up"],
+        "command":"node esbuild.mjs build"
+    },"watch":{
+        "setup_commands":["npm i -D esbuild dao3up"],
+        "command":"node esbuild.mjs watch"
+    }
+}
+#[file-end]

@@ -1,0 +1,80 @@
+#[file-start]bun-build.ts
+import * as api from "dao3up";
+import process from "node:process";
+import * as path from "node:path";
+import { watch } from "node:fs";
+const build_type = process.argv[process.argv.length - 1] === "build"
+    ? "build"
+    : "watch";
+
+const buildConf = api.getBuildConfig();
+function generateBuildCfg(side: "server" | "client") {
+    return {
+        entry: buildConf[side].entry,
+        outfile: buildConf[side].outfile,
+        tsconfig: buildConf[side].tsconfigPath,
+        minify: buildConf[side].development ? false : true,
+    };
+}
+async function buildSide(side: "server" | "client") {
+    const time = Date.now();
+    console.log(`building ${side}...`);
+    const cfg = generateBuildCfg(side);
+    const res = await Bun.build({
+        entrypoints: [cfg.entry],
+        target: "browser",
+        format: "cjs",
+        minify: cfg.minify,
+        throw: true,
+    });
+    const code = await res.outputs[0].text();
+    Bun.write(cfg.outfile, code);
+    console.log(`built ${side} in ${Date.now() - time}ms`);
+    api.upload(side);
+}
+async function watchSide(side: "server" | "client") {
+    console.log(`watching ${side}...`);
+    buildSide(side);
+    const cfg = generateBuildCfg(side);
+    const _tmp_modify: Record<string, number> = {};
+    //  watch的一些神秘问题,保存文件"change"会触发两次，这肯定不行，所以使用_tmp_modify
+    const watcher = watch(path.dirname(cfg.entry), (event, filename) => {
+        if(event=="change"&&filename){
+            _tmp_modify[filename]=_tmp_modify[filename]? _tmp_modify[filename]+1 : 1;
+            if(_tmp_modify[filename]==1){
+                console.log("detected changes in " + side);
+                buildSide(side);
+            }else{
+                _tmp_modify[filename]=0;
+            }
+        }else{
+            console.log("detected changes in " + side);
+        }
+    });
+}
+console.log("build type: " + build_type);
+if (build_type == "build") {
+    Promise.all(
+        [buildSide("server"), buildSide("client")],
+    );
+} else {
+    Promise.all(
+        [watchSide("server"), watchSide("client")],
+    );
+}
+#[file-end]
+#[file-start]dao3up.json
+{
+    "build":{
+        "setup_commands":[
+          "bun i -D dao3up"
+        ],
+        "command":"bun run bun-build.ts build"
+    },"watch":{
+        "setup_commands":[
+          "bun i -D dao3up"
+        ],
+        "command":"bun run bun-build.ts watch"
+    }
+}
+#[file-end]

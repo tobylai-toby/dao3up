@@ -1,0 +1,97 @@
+#[file-start]deno-build.ts
+import * as api from "npm:dao3up";
+import process from "node:process";
+import { bundle } from "jsr:@deno/emit";
+import JSON5 from "https://esm.sh/json5@2.2.3";
+import * as path from "node:path";
+const build_type = process.argv[process.argv.length - 1] === "build"
+  ? "build"
+  : "watch";
+
+const buildConf = api.getBuildConfig();
+function generateBuildCfg(side: "server" | "client") {
+  return {
+    entry: buildConf[side].entry,
+    outfile: buildConf[side].outfile,
+    tsconfig: buildConf[side].tsconfigPath,
+    minify: buildConf[side].development ? false : true,
+  };
+}
+function getImportMap() {
+  let denoJsonPath = "deno.json";
+  try {
+    Deno.statSync("deno.json")
+  } catch (e) {
+    console.log("deno.json not found, creating one...");
+    Deno.writeTextFileSync("deno.json",`{"imports":{}}`);
+  }
+  const conf = JSON.parse(Deno.readTextFileSync(denoJsonPath));
+  const importMap = conf.imports;
+  for (const key in importMap) {
+    importMap[key] = importMap[key].replace("npm:", "https://esm.sh/");
+  }
+  return importMap;
+}
+async function buildSide(side: "server" | "client") {
+  const time = Date.now();
+  console.log(`building ${side}...`);
+  const cfg = generateBuildCfg(side);
+  const result = await bundle(cfg.entry, {
+    allowRemote: true,
+    importMap: {
+      imports: getImportMap(),
+    },
+    type: "classic",
+    compilerOptions: JSON5.parse(Deno.readTextFileSync(cfg.tsconfig)),
+    minify: cfg.minify,
+  });
+  await Deno.writeTextFile(cfg.outfile, result.code);
+  console.log(`built ${side} in ${Date.now() - time}ms`);
+  api.upload(side);
+}
+async function watchSide(side: "server" | "client") {
+  console.log(`watching ${side}...`);
+  buildSide(side);
+  const cfg = generateBuildCfg(side);
+  console.log(path.dirname(cfg.entry));
+  const watcher = Deno.watchFs(path.dirname(cfg.entry));
+  const _tmp_modify:Record<string,number>={};
+  // Deno watch的一些神秘问题,保存文件"modify"会触发两次，这肯定不行，所以使用_tmp_modify
+  for await (const event of watcher) {
+      if(event.kind=="modify"){
+        _tmp_modify[event.paths[0]]=_tmp_modify[event.paths[0]]? _tmp_modify[event.paths[0]]+1 : 1;
+        if(_tmp_modify[event.paths[0]]==1){
+            console.log("detected changes in " + side);
+            buildSide(side);
+        }else{
+            _tmp_modify[event.paths[0]]=0;
+        }
+      }else{
+        console.log("detected changes in " + side);
+        buildSide(side);
+      }
+  }
+}
+console.log("build type: " + build_type);
+if (build_type == "build") {
+  Promise.all(
+    [buildSide("server"), buildSide("client")],
+  );
+} else {
+  Promise.all(
+    [watchSide("server"), watchSide("client")],
+  );
+}
+#[file-end]
+#[file-start]dao3up.json
+{
+    "build":{
+        "setup_commands":[],
+        "command":"deno run -A deno-build.ts build"
+    },"watch":{
+        "setup_commands":[],
+        "command":"deno run -A deno-build.ts watch"
+    }
+}
+
+#[file-end]

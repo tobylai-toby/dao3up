@@ -1,0 +1,6 @@
+test
+templates
+node_modules
+*.ts
+*.lock
+!dist/*
