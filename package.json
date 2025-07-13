@@ -2,7 +2,7 @@
   "name": "dao3up",
   "main": "dist/api.js",
   "description": "适用于ArenaPro的构建/上传工具CLI",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "type": "module",
   "author": "Tobylai",
   "repository": {
