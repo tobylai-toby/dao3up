@@ -61,10 +61,10 @@ export async function buildNUploadUntilFinish(
         proc.stdout.on("data", async (chunk) => {
             let line: string = chunk.toString();
             logger.info("[builder] " + line.trimEnd());
-            if (line.includes("[dao3up-upload.client]")&&upload_enabled) {
+            if (line.includes("[dao3up-upload.client]") && upload_enabled) {
                 await uploadSide("client");
             }
-            if (line.includes("[dao3up-upload.server]")&&upload_enabled) {
+            if (line.includes("[dao3up-upload.server]") && upload_enabled) {
                 await uploadSide("server");
             }
         });
@@ -150,25 +150,27 @@ export async function uploadfile(
     return true;
 }
 
-export async function fetchLoginUserInfo():Promise<{
-    success: boolean,full: any,
-    id?: number, nickname?: string
-}>{
-    const {token,userAgent}=getUserData();
-    const resp=await fetch("https://code-api-pc.dao3.fun/auth/user",{
-        headers: getHeaders(token,userAgent)
+export async function fetchLoginUserInfo(): Promise<{
+    success: boolean;
+    full: any;
+    id?: number;
+    nickname?: string;
+}> {
+    const { token, userAgent } = getUserData();
+    const resp = await fetch("https://code-api-pc.dao3.fun/auth/user", {
+        headers: getHeaders(token, userAgent),
     });
-    const res=await resp.json();
-    if(res.code!=200){
+    const res = await resp.json();
+    if (res.code != 200) {
         return {
             success: false,
-            full: res
-        }
+            full: res,
+        };
     }
     return {
         success: true,
         full: res,
         id: res.data.userId,
-        nickname: res.data.nickname
-    }
+        nickname: res.data.nickname,
+    };
 }

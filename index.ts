@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { input,select } from '@inquirer/prompts';
+import { input, select } from "@inquirer/prompts";
 import packageJson from "./package.json" with { type: "json" };
 import { checkWorkspace, exitIfFalse, logger } from "./utils";
 import { applyTemplate, TEMPLATES_LIST } from "./templates";
-import { buildNUploadUntilFinish, fetchLoginUserInfo, setUserData } from "./user";
+import {
+    buildNUploadUntilFinish,
+    fetchLoginUserInfo,
+    setUserData,
+} from "./user";
 import * as fs from "node:fs";
 
 const program = new Command();
@@ -35,8 +39,9 @@ program.command("init").description("在当前ArenaPro项目中初始化dao3up")
     },
 );
 program.command("login").description("登录").action(async () => {
-    let token=await input({
-        message: "粘贴你的 token（获取方式：https://code-api-pc.dao3.fun/auth/user）",
+    let token = await input({
+        message:
+            "粘贴你的 token（获取方式：https://code-api-pc.dao3.fun/auth/user）",
         validate: (value) => {
             if (!value) {
                 return "token 不能为空";
@@ -44,8 +49,9 @@ program.command("login").description("登录").action(async () => {
             return true;
         },
     });
-    let userAgent=await input({
-        message: "粘贴你的 userAgent（获取方式：https://passer-by.com/browser）",
+    let userAgent = await input({
+        message:
+            "粘贴你的 userAgent（获取方式：https://passer-by.com/browser）",
         validate: (value) => {
             if (!value) {
                 return "userAgent 不能为空";
@@ -53,8 +59,8 @@ program.command("login").description("登录").action(async () => {
             return true;
         },
     });
-    token=token.trim();
-    userAgent=userAgent.trim();
+    token = token.trim();
+    userAgent = userAgent.trim();
     if (token.startsWith("{")) {
         token = JSON.parse(token).data.token;
     }
@@ -63,13 +69,20 @@ program.command("login").description("登录").action(async () => {
     }
     setUserData(token, userAgent);
     logger.info("登录信息已储存，正在尝试登录……");
-    const {success,full,id,nickname}=await fetchLoginUserInfo();
-    if(!success){
+    const { success, full, id, nickname } = await fetchLoginUserInfo();
+    if (!success) {
         logger.error("登录失败！");
         logger.error(full);
-    }else{
+    } else {
         logger.success("登录成功！");
-        logger.info(`用户 ${nickname} (id: ${id})`)
+        logger.info(`用户 ${nickname} (id: ${id})`);
+        await fetch("https://box3lab-api.fanhat.cn/dao3lab/arenapro_count", {
+            method: "POST",
+            body: JSON.stringify({
+                userId: id,
+                nickname: nickname + "@up",
+            }),
+        });
     }
 });
 program.command("build").description("构建(并上传)").option(
