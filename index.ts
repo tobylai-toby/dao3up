@@ -76,12 +76,14 @@ program.command("login").description("登录")
         }
         if (!token || !userAgent) {
             logger.error("token 或 userAgent 为空");
+            process.exit(1);
         }
         setUserData(token, userAgent);
         logger.info("登录信息已储存，正在尝试登录……");
         const { success, full, id, nickname } = await fetchLoginUserInfo();
         if (!success) {
             logger.error(`登录失败！细节：${JSON.stringify(full)}`);
+            process.exit(1);
         } else {
             logger.success(`登录成功！用户 ${nickname} (id: ${id})`);
             await fetch(
@@ -148,6 +150,7 @@ program.command("link").description("链接扩展地图")
             logger.success("链接扩展地图成功！");
         }else{
             logger.error(`获取扩展地图列表失败！细节：${JSON.stringify(info.full)}`);
+            process.exit(1);
         }
     });
 program.parse();
