@@ -61,9 +61,10 @@ Options:
 
 Commands:
   init             在当前ArenaPro项目中初始化dao3up
-  login            登录
+  login [options]  登录
   build [options]  构建(并上传)
   watch [options]  热更新HMR(并上传)
+  link             链接扩展地图
   help [command]   display help for command
 ```
 
