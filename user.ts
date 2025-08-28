@@ -174,3 +174,43 @@ export async function fetchLoginUserInfo(): Promise<{
         nickname: res.data.nickname,
     };
 }
+
+export interface MapInfo{
+    id: number,
+    playHash: string,
+    editHash: string,
+    name: string,
+    describe: string,
+    shared: boolean
+}
+
+export async function listExtMaps() {
+    let { token, userAgent } = getUserData();
+    let dat=await ((await fetch(
+        "https://code-api-pc.dao3.fun/ugc/creator/content/page",
+        {
+            method: "POST",
+            headers: getHeaders(token, userAgent),
+            body: JSON.stringify({
+                "title": "",
+                "type": 1,
+                "limit": 100,
+                "offset": 0,
+                "orderBy": 1,
+                "orderDesc": true,
+            }),
+        },
+    )).json());
+    if(dat.code!=200){
+        return {
+            success: false,
+            full: dat
+        }
+    }else{
+        return {
+            success: true,
+            full: dat,
+            maps: dat.data.rows as MapInfo[]
+        }
+    }
+}
