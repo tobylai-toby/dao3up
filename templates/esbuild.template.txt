@@ -34,9 +34,7 @@ async function buildSide(side) {
         outfile: cfg.outfile,
         outname: path.basename(cfg.outfile),
     };
-    lock = true;
     await sleep(10);
-    lock = false;
     api.upload(side);
 }
 async function watchSide(side) {
